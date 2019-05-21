@@ -55,10 +55,10 @@ var div = d3.select("body").append("div")
 
 var simulation = d3.forceSimulation()
               .force("center", d3.forceCenter(graphWidth / 2, height / 2))
-              .force("x", d3.forceX(graphWidth / 2).strength(0.1))
-              .force("y", d3.forceY(height / 2).strength(0.1))
-              .force("charge", d3.forceManyBody().strength(-100))
-              .force("link", d3.forceLink().strength(1).id(function(d) { return d.id; }).distance(50))
+              .force("x", d3.forceX(graphWidth / 2).strength(0.01))
+              .force("y", d3.forceY(height / 2).strength(0.01))
+              .force("charge", d3.forceManyBody().strength(-200))
+              .force("link", d3.forceLink().strength(1).id(function(d) { return d.id; }).distance(100))
               .alphaTarget(0)
               .alphaDecay(0.05)
 
@@ -74,7 +74,8 @@ function getArrowPoint(Ps,C,Pt,Rs,Rt)
 }
 
 
-d3.json("data.json",function(error,data){
+
+d3.json("simplest_data.json",function(error,data){
   console.log(data)
 
   initGraph(data)
@@ -82,18 +83,33 @@ d3.json("data.json",function(error,data){
   function initGraph(tempData){
 
 
+
+    var graph = {};
+
+    tempData.nodes.forEach(function(d){
+        graph[d.id] = [];
+    });
+
+    tempData.edges.forEach(function(d){
+        graph[d.source].push(d.target);
+    });
+    console.log(graph);
     var gui = new dat.GUI();
 
     var r1 = {r:5};
     var r2 = {r:10};
-    var cr = {curvature:20};
+    var cr = {curvature:0.4};
     var linewidth = {width:2};
     var linkalpha = {alpha:1};
+    var nodestrokewidth = {nodestrokewidth:2};
+    var headlength = {headlength:3};
     gui.add(r1, 'r', 2, 100).onChange(render);
     gui.add(r2, 'r', 2, 100).onChange(render);
-    gui.add(cr, 'curvature', 0, 100).onChange(render);
+    gui.add(cr, 'curvature', 0, 2).onChange(render);
     gui.add(linewidth, 'width', 1, 5).onChange(render);
     gui.add(linkalpha, 'alpha', 0, 1).onChange(render);
+    gui.add(nodestrokewidth, 'nodestrokewidth', 0, 10).onChange(render);
+    gui.add(headlength, 'headlength', 0, 10).onChange(render);
 
     function zoomed() {
       console.log("zooming")
@@ -281,42 +297,47 @@ d3.json("data.json",function(error,data){
       context.scale(transform.k, transform.k);
 
       tempData.edges.forEach(function(d) {
-            
+
             let ex = d.target.x - d.source.x;
             let ey = d.target.y - d.source.y;
             let D = Math.sqrt( ex*ex + ey*ey );
+            let this_curvature;
             ex = ex / D;
             ey = ey / D;
-            let ex2 = -ey;
-            let ey2 = ex;
-            let cx = d.source.x + 0.5*D*ex + cr.curvature * ex2;
-            let cy = d.source.y + 0.5*D*ey + cr.curvature * ey2;
-            let C = {x: cx, y: cy}    
+            let headLength = headlength.headlength*linewidth.width; // this is the distance between arrow point and
 
             let targetRadius, sourceRadius;
             if (d.target.id == 0)
-            {
-              sourceRadius = r2.r;
-              targetRadius = r1.r;
-            }
+              targetRadius = r1.r + nodestrokewidth.nodestrokewidth*0.5;
             else
-            {
-              sourceRadius = r1.r;
-              targetRadius = r2.r;
-            }
+              targetRadius = r2.r + nodestrokewidth.nodestrokewidth*0.5;
+
+            if (d.source.id == 0)
+              sourceRadius = r1.r + nodestrokewidth.nodestrokewidth*0.5;
+            else
+              sourceRadius = r2.r + nodestrokewidth.nodestrokewidth*0.5;
+
+            if ((graph[d.target.id].indexOf(d.source.id) >= 0) || (D-targetRadius-sourceRadius-headLength<0))
+              this_curvature = cr.curvature;
+            else
+              this_curvature = 0;
+            
+            let ex2 = -ey;
+            let ey2 = ex;
+            let cx = d.source.x + 0.5*D*ex + this_curvature * D * ex2;
+            let cy = d.source.y + 0.5*D*ey + this_curvature * D * ey2;
+            let C = {x: cx, y: cy}    
 
             B = get_arrow_point_and_direction(d.source,C,d.target,targetRadius);
             //let scale = 3*Math.sqrt(linewidth.width);
-            let headLength = 3*linewidth.width; // this is the distance between arrow point and
                                            // beginning of the arrow head
 
             // compute length of whole curve
             let L;
-            if (cr.curvature > 0)
+            if (this_curvature > 0)
                 L = quadraticBezierLength(d.source,C,d.target);
             else
                 L = D;
-            console.log(L, quadraticBezierLength2(d.source,C,d.target));
 
 
             let distance_from_target_to_arrowhead_base = targetRadius + headLength;
@@ -380,16 +401,16 @@ d3.json("data.json",function(error,data){
 
             context.beginPath();
             let radius;
-            if (i == 0)
+            if (d.id == 0)
               radius = r1.r;
             else
               radius = r2.r;
+
             context.arc(d.x, d.y, radius, 0, 2 * Math.PI, true);
-            context.lineWidth = 1;
+            context.lineWidth = nodestrokewidth.nodestrokewidth;
             //context.fillStyle = d.col ? "red":"black"
             context.fillStyle = "black";
             //context.fill();
-            context.lineWidth = 1;
             context.strokeStyle = "black";
             context.stroke();
         });
