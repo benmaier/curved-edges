@@ -3,6 +3,7 @@
 <script src="https://d3js.org/d3-force.v1.min.js"></script>
 <script src="https://d3js.org/d3.v4.min.js"></script>
 <script src="dat.gui.min.js"></script>
+<script src="bezier.js"></script>
 <style>
 .edge{
   stroke: white;
@@ -75,7 +76,7 @@ function getArrowPoint(Ps,C,Pt,Rs,Rt)
 
 
 
-d3.json("simplest_data.json",function(error,data){
+d3.json("sample_data.json",function(error,data){
   console.log(data)
 
   initGraph(data)
@@ -96,13 +97,13 @@ d3.json("simplest_data.json",function(error,data){
     console.log(graph);
     var gui = new dat.GUI();
 
-    var r1 = {r:5};
-    var r2 = {r:10};
-    var cr = {curvature:0.4};
-    var linewidth = {width:2};
-    var linkalpha = {alpha:1};
-    var nodestrokewidth = {nodestrokewidth:2};
-    var headlength = {headlength:3};
+    var r1 = {r:55};
+    var r2 = {r:32};
+    var cr = {curvature:0.6};
+    var linewidth = {width:3};
+    var linkalpha = {alpha:0.8};
+    var nodestrokewidth = {nodestrokewidth:3};
+    var headlength = {headlength:4};
     gui.add(r1, 'r', 2, 100).onChange(render);
     gui.add(r2, 'r', 2, 100).onChange(render);
     gui.add(cr, 'curvature', 0, 2).onChange(render);
@@ -364,11 +365,18 @@ d3.json("simplest_data.json",function(error,data){
             // draw the link
             context.lineWidth = linewidth.width;
             context.beginPath();
+            context.strokeStyle = "rgba(0,0,0,"+linkalpha.alpha+")";
+            /*
             // start the link at the radius of the source node and end it at the beginning of the arrow head
             context.setLineDash([ 0, sourceRadius, L - sourceRadius - targetRadius - headLength, targetRadius + headLength]);
-            context.strokeStyle = "rgba(0,0,0,"+linkalpha.alpha+")";
+
             context.moveTo(d.source.x, d.source.y);
             context.quadraticCurveTo(C.x,C.y,d.target.x, d.target.y);
+            */
+            var curve = new Bezier(d.source,C,d.target);
+            c = curve.split(0,controlpoint_center.t);
+            context.moveTo(c.points[0].x, c.points[0].y);
+            context.quadraticCurveTo(c.points[1].x, c.points[1].y,c.points[2].x, c.points[2].y);
             context.stroke();
 
             context.setLineDash([]);
@@ -409,8 +417,8 @@ d3.json("simplest_data.json",function(error,data){
             context.arc(d.x, d.y, radius, 0, 2 * Math.PI, true);
             context.lineWidth = nodestrokewidth.nodestrokewidth;
             //context.fillStyle = d.col ? "red":"black"
-            context.fillStyle = "black";
-            //context.fill();
+            context.fillStyle = "white";
+            context.fill();
             context.strokeStyle = "black";
             context.stroke();
         });
