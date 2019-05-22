@@ -189,7 +189,7 @@ d3.json("sample_data.json",function(error,data){
         }
     }
 
-    function get_cost_and_point(t,P0,P1,P2,R){
+    function get_arrow_point_cost_and_point(t,P0,P1,P2,R){
         let B = get_B(t,P0,P1,P2); // get point and derivative
         return {
                 c: R*R - ( Math.pow(B.x-P2.x,2) + Math.pow(B.y-P2.y,2)), // get cost
@@ -215,7 +215,7 @@ d3.json("sample_data.json",function(error,data){
         //newton-raphson with accuracy of 1 per mille
         while(Math.abs(1-t/old_t)>1e-3)
         {
-            C = get_cost_and_point(t,P0,P1,P2,R);
+            C = get_arrow_point_cost_and_point(t,P0,P1,P2,R);
             old_t = t;
             t = t - C.c / C.cp;
         }
@@ -228,7 +228,9 @@ d3.json("sample_data.json",function(error,data){
         return C.B;
     }
 
-    function get_arrow_base_and_direction(P0,P1,P2,R,A,t_initial){
+    function get_arrow_base_and_direction(P0,P1,P2,R,A,t_initial)
+    {
+
         let t = t_initial;       // initial guess: source node position
         let old_t = -1;  // dummy 
         let C;
@@ -240,55 +242,16 @@ d3.json("sample_data.json",function(error,data){
             old_t = t;
             t = t - C.c / C.cp;
         }
+
         // norm direction vector
         let D = Math.sqrt( Math.pow(C.B.xp,2) + Math.pow(C.B.yp,2) );
         C.B.xp /= D;
         C.B.yp /= D;
+
         // add t value
         C.B.t = t;
         return C.B;
     }
-
-    function quadraticBezierLength(P0, P1, P2) {
-        // from https://stackoverflow.com/questions/37082744/split-one-quadratic-bezier-curve-into-two
-      let a = {
-          x : P0.x - 2 * P1.x + P2.x,
-          y : P0.y - 2 * P1.y + P2.y
-         };
-      let b = {
-          x : 2 * P1.x - 2 * P0.x,
-          y : 2 * P1.y - 2 * P0.y
-        };
-      let  A = 4 * (a.x * a.x + a.y * a.y);
-      let  B = 4 * (a.x * b.x + a.y * b.y);
-      let  C = b.x * b.x + b.y * b.y;
-
-      let  Sabc = 2 * Math.sqrt(A + B + C);
-      let  A_2 = Math.sqrt(A);
-      let  A_32 = 2 * A * A_2;
-      let  C_2 = 2 * Math.sqrt(C);
-      let  BA = B / A_2;
-
-      return (A_32 * Sabc + A_2 * B * (Sabc - C_2) + (4 * C * A - B * B) * Math.log((2 * A_2 + BA + Sabc) / (BA + C_2))) / (4 * A_32);
-    };
-
-    function get_distance(P0,P1){
-        return Math.sqrt(Math.pow(P1.x-P0.x,2) + Math.pow(P1.y-P0.y,2));
-    }
-
-    function quadraticBezierLength2(P0,P1,P2) {
-      let N = 100;
-      let d = 0;
-      let lastPoint = P0;
-      for(let i=1; i<=N; ++i)
-      {
-          let thisPoint = get_B(i/N,P0,P1,P2)
-          d += get_distance(lastPoint,thisPoint);
-          lastPoint = thisPoint;
-      }
-      return d;
-    }
-
 
     function simulationUpdate(){
       context.save();
@@ -299,15 +262,23 @@ d3.json("sample_data.json",function(error,data){
 
       tempData.edges.forEach(function(d) {
 
-            let ex = d.target.x - d.source.x;
-            let ey = d.target.y - d.source.y;
-            let D = Math.sqrt( ex*ex + ey*ey );
-            let this_curvature;
-            ex = ex / D;
-            ey = ey / D;
+            let P0 = d.source;
+            let P2 = d.target;
+            let e = { 
+                      xp: P2.x - P0.x,
+                      yp: P2.y - P0.y
+                    };
+            let D = Math.sqrt( e.xp*e.xp + e.yp*e.yp );
+            e.xp /= D;
+            e.yp /= D;
+
+            // normal vector;
+            let ep1 = { xp: -e.yp, yp: e.xp };
+
             let headLength = headlength.headlength*linewidth.width; // this is the distance between arrow point and
 
             let targetRadius, sourceRadius;
+            let this_curvature;
             if (d.target.id == 0)
               targetRadius = r1.r + nodestrokewidth.nodestrokewidth*0.5;
             else
@@ -322,85 +293,88 @@ d3.json("sample_data.json",function(error,data){
               this_curvature = cr.curvature;
             else
               this_curvature = 0;
-            
-            let ex2 = -ey;
-            let ey2 = ex;
-            let cx = d.source.x + 0.5*D*ex + this_curvature * D * ex2;
-            let cy = d.source.y + 0.5*D*ey + this_curvature * D * ey2;
-            let C = {x: cx, y: cy}    
 
-            B = get_arrow_point_and_direction(d.source,C,d.target,targetRadius);
-            //let scale = 3*Math.sqrt(linewidth.width);
-                                           // beginning of the arrow head
+            let controlpoint_center, controlpoint_left, controlpoint_right;
+            let A; // this is the point of the arrow point
 
-            // compute length of whole curve
-            let L;
             if (this_curvature > 0)
-                L = quadraticBezierLength(d.source,C,d.target);
+            {
+                
+                let P1 = { 
+                           x: P0.x + 0.5*D*e.xp + this_curvature * D * ep1.xp,
+                           y: P0.y + 0.5*D*e.yp + this_curvature * D * ep1.yp
+                         };
+
+                A = get_arrow_point_and_direction(P0,P1,P2,targetRadius);
+
+                // compute length of whole curve
+                let curve = new Bezier(P0,P1,P2);
+                let L = curve.length();
+
+
+                controlpoint_center = get_arrow_base_and_direction(P0,P1,P2,headLength,A,A.t-headLength/L);
+
+                let ecNormal = { xp: -controlpoint_center.yp,
+                                 yp: controlpoint_center.xp
+                               } 
+                controlpoint_left = {
+                    x: controlpoint_center.x + headLength/Math.sqrt(3) * (ecNormal.xp),
+                    y: controlpoint_center.y + headLength/Math.sqrt(3) * (ecNormal.yp)
+                };
+                controlpoint_right = {
+                    x: controlpoint_center.x + headLength/Math.sqrt(3) * (-ecNormal.xp),
+                    y: controlpoint_center.y + headLength/Math.sqrt(3) * (-ecNormal.yp)
+                };
+
+                // draw the link
+                context.lineWidth = linewidth.width;
+                context.strokeStyle = "rgba(0,0,0,"+linkalpha.alpha+")";
+                context.beginPath();
+
+                c = curve.split(0,controlpoint_center.t);
+                context.moveTo(c.points[0].x, c.points[0].y);
+                context.quadraticCurveTo(c.points[1].x, c.points[1].y,c.points[2].x, c.points[2].y);
+                context.stroke();
+
+            }
             else
-                L = D;
+            {
+                A = {
+                       x: P0.x + (D-targetRadius) * e.xp,
+                       y: P0.y + (D-targetRadius) * e.yp
+                };
+                controlpoint_center = {
+                       x: P0.x + (D-targetRadius-headLength) * e.xp,
+                       y: P0.y + (D-targetRadius-headLength) * e.yp
+                };
+                controlpoint_left = {
+                    x: controlpoint_center.x + headLength/Math.sqrt(3) * (ep1.xp),
+                    y: controlpoint_center.y + headLength/Math.sqrt(3) * (ep1.yp)
+                };
+                controlpoint_right = {
+                    x: controlpoint_center.x + headLength/Math.sqrt(3) * (-ep1.xp),
+                    y: controlpoint_center.y + headLength/Math.sqrt(3) * (-ep1.yp)
+                };
 
+                context.lineWidth = linewidth.width;
+                context.beginPath();
+                context.strokeStyle = "rgba(0,0,0,"+linkalpha.alpha+")";
+                context.moveTo(P0.x, P0.y);
+                context.lineTo(controlpoint_center.x, controlpoint_center.y);
+                context.stroke();
+            }
 
-            let distance_from_target_to_arrowhead_base = targetRadius + headLength;
-          //console.log(bezier_t,distance_from_target_to_arrowhead_base,L);
-
-            //let controlpoint_center = get_B(,d.source,C,d.target);
-            let controlpoint_center = get_arrow_base_and_direction(d.source,C,d.target,headLength,B,B.t-headLength/L);
-            let arrow_dir = { xp: B.x - controlpoint_center.x, yp: B.y - controlpoint_center.y }
-            let arrow_D = Math.sqrt( Math.pow(arrow_dir.xp,2) + Math.pow(arrow_dir.yp,2));
-            arrow_dir.xp /= arrow_D;
-            arrow_dir.yp /= arrow_D;
-
-            arrow_dir.xp = controlpoint_center.xp
-            arrow_dir.yp = controlpoint_center.yp
-            let controlpoint_left = {
-                x: controlpoint_center.x + headLength/Math.sqrt(3) * (-arrow_dir.yp),
-                y: controlpoint_center.y + headLength/Math.sqrt(3) * (arrow_dir.xp)
-            };
-            let controlpoint_right = {
-                x: controlpoint_center.x + headLength/Math.sqrt(3) * (arrow_dir.yp),
-                y: controlpoint_center.y + headLength/Math.sqrt(3) * (-arrow_dir.xp)
-            };
-
-            // draw the link
-            context.lineWidth = linewidth.width;
-            context.beginPath();
-            context.strokeStyle = "rgba(0,0,0,"+linkalpha.alpha+")";
-            /*
-            // start the link at the radius of the source node and end it at the beginning of the arrow head
-            context.setLineDash([ 0, sourceRadius, L - sourceRadius - targetRadius - headLength, targetRadius + headLength]);
-
-            context.moveTo(d.source.x, d.source.y);
-            context.quadraticCurveTo(C.x,C.y,d.target.x, d.target.y);
-            */
-            var curve = new Bezier(d.source,C,d.target);
-            c = curve.split(0,controlpoint_center.t);
-            context.moveTo(c.points[0].x, c.points[0].y);
-            context.quadraticCurveTo(c.points[1].x, c.points[1].y,c.points[2].x, c.points[2].y);
-            context.stroke();
-
-            context.setLineDash([]);
-          /*
-            context.lineWidth = 1;
-            context.strokeStyle = "red";
-            context.beginPath();
-            context.moveTo(B.x, B.y);
-            context.lineTo(controlpoint_center.x, controlpoint_center.y);
-            context.stroke();
-          */
-
-            
+            //draw arrowhead
             context.lineWidth = 0;
             context.beginPath();
+
           
-            context.moveTo(B.x,B.y);
+            context.moveTo(A.x,A.y);
             context.lineTo(controlpoint_left.x,controlpoint_left.y);
             context.lineTo(controlpoint_right.x,controlpoint_right.y);
-            context.lineTo(B.x,B.y);
+            context.lineTo(A.x,A.y);
             context.fillStyle = "rgba(0,0,0,"+linkalpha.alpha+")";
             context.fill();
-            //context.stroke();
-
             
         });
 
