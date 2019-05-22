@@ -104,7 +104,7 @@ class ArrowedLink {
         targetRadius = this.target_radius
       ;
 
-    this.isCurved = (this.link_back_exists || (this.D-this.target_radius-this.source_radius-this.head_length<0));
+    this.isCurved = (curvature > 0) && (this.link_back_exists || (this.D-this.target_radius-this.source_radius-this.head_length<0));
 
     if (this.isCurved)
     {
