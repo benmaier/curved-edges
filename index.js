@@ -57,6 +57,7 @@ d3.json("sample_data.json",function(error,data){
     var linkalpha = {alpha:0.8};
     var nodestrokewidth = {nodestrokewidth:3};
     var headlength = {headlength:4};
+    var headwidth = {headwidth:1};
     gui.add(r1, 'r', 2, 100).onChange(render);
     gui.add(r2, 'r', 2, 100).onChange(render);
     gui.add(cr, 'curvature', 0, 2).onChange(render);
@@ -64,6 +65,7 @@ d3.json("sample_data.json",function(error,data){
     gui.add(linkalpha, 'alpha', 0, 1).onChange(render);
     gui.add(nodestrokewidth, 'nodestrokewidth', 0, 10).onChange(render);
     gui.add(headlength, 'headlength', 0, 10).onChange(render);
+    gui.add(headwidth, 'headwidth', 0, 2).onChange(render);
 
     function zoomed() {
       console.log("zooming")
@@ -158,6 +160,7 @@ d3.json("sample_data.json",function(error,data){
             this_link.nodeStrokeWidth(nodestrokewidth.nodestrokewidth)
                      .linkWidth(linewidth.width)
                      .arrowHeadLengthScalar(headlength.headlength)
+                     .arrowHeadWidthScalar(headwidth.headwidth)
                      .curvatureScalar(cr.curvature)
                      .linkStyle("rgba(0,0,0,"+linkalpha.alpha+")");
             this_link.draw(context);

@@ -24,6 +24,7 @@ Then style and draw the arrowed link
 link.nodeStrokeWidth(2) // Nodes will have stroke width of 2px (=> node radius will be incremented by 1px)
     .linkWidth(3)       // links will have a width of 3px
     .arrowHeadLengthScalar(4) // arrow heads will have a length of 4 times the link width
+    .arrowHeadWidthScalar(1) // arrow heads will have a width of this_scalar*2*headLength/sqrt(3)
     .curvatureScalar(0.5) // the curvature control point will lie at half distance of the uncurved link in normal direction to the uncurved link
     .linkStyle("rgba(0,0,0,0.5)"); // how canvas should draw the arrow (black but half transparent)
 

@@ -12,6 +12,7 @@ class ArrowedLink {
     this.nodeStrokeWidth(0);
     this.linkWidth(1);
     this.arrowHeadLengthScalar(3);
+    this.arrowHeadWidthScalar(1);
     this.curvatureScalar(0.25);
     this.linkStyle("black");
   }
@@ -65,6 +66,14 @@ class ArrowedLink {
     return this;
   }
 
+  arrowHeadWidthScalar(w)
+  {
+    if (!arguments.length) return this.arrow_head_width_scalar;
+
+    this.arrow_head_width_scalar = w;
+    return this;
+  }
+
   curvatureScalar(c)
   {
     if (!arguments.length) return this.curvature_scalar;
@@ -105,6 +114,7 @@ class ArrowedLink {
       ;
 
     this.isCurved = (curvature > 0) && (this.link_back_exists || (this.D-this.target_radius-this.source_radius-this.head_length<0));
+    let headWidth = this.arrow_head_width_scalar * headLength/Math.sqrt(3);
 
     if (this.isCurved)
     {
@@ -131,12 +141,12 @@ class ArrowedLink {
                          yp: controlpoint_center.xp
                        } 
         controlpoint_left = {
-            x: controlpoint_center.x + headLength/Math.sqrt(3) * (ecNormal.xp),
-            y: controlpoint_center.y + headLength/Math.sqrt(3) * (ecNormal.yp)
+            x: controlpoint_center.x + headWidth * (ecNormal.xp),
+            y: controlpoint_center.y + headWidth * (ecNormal.yp)
         };
         controlpoint_right = {
-            x: controlpoint_center.x + headLength/Math.sqrt(3) * (-ecNormal.xp),
-            y: controlpoint_center.y + headLength/Math.sqrt(3) * (-ecNormal.yp)
+            x: controlpoint_center.x + headWidth * (-ecNormal.xp),
+            y: controlpoint_center.y + headWidth * (-ecNormal.yp)
         };
 
         // draw the link
@@ -163,12 +173,12 @@ class ArrowedLink {
                y: P0.y + (D-targetRadius-headLength) * e.yp
         };
         controlpoint_left = {
-            x: controlpoint_center.x + headLength/Math.sqrt(3) * (ep1.xp),
-            y: controlpoint_center.y + headLength/Math.sqrt(3) * (ep1.yp)
+            x: controlpoint_center.x + headWidth * (ep1.xp),
+            y: controlpoint_center.y + headWidth * (ep1.yp)
         };
         controlpoint_right = {
-            x: controlpoint_center.x + headLength/Math.sqrt(3) * (-ep1.xp),
-            y: controlpoint_center.y + headLength/Math.sqrt(3) * (-ep1.yp)
+            x: controlpoint_center.x + headWidth * (-ep1.xp),
+            y: controlpoint_center.y + headWidth * (-ep1.yp)
         };
 
         context.lineWidth = this.link_width;
